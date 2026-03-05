@@ -1,0 +1,178 @@
+CREATE DATABASE patients;
+USE patients;
+drop table if exists patients;
+Create Table patients(
+patient_id INT PRIMARY KEY, 
+patient_name VARCHAR (100),
+gender VARCHAR(100),
+age INT,
+city VARCHAR (100));
+SHOW TABLES;
+
+INSERT INTO patients
+(patient_id,patient_name,gender,age,city)VALUES
+(1,'Amit Sharma','Male',30,'Delhi'),
+(2,'Neha Verma','Female',25,'Mumbai'),
+(3,'Rahul Singh','Male',40,'Delhi'),
+(4,'Priya Mehta','Female',35,'Bangalore'),
+(5,'Arjun Rao','Male',50,'Chennai'),
+(6,'Sneha Kapoor','Female',28,'Mumbai');
+select * from patients;
+
+CREATE DATABASE doctors;
+use doctors;
+drop table if exists doctors;
+
+CREATE TABLE doctors(
+doctor_id INT PRIMARY KEY,
+doctor_name VARCHAR(100),
+department VARCHAR(100));
+
+INSERT INTO doctors
+(doctor_id,doctor_name,department)VALUES
+(101,'Dr.Mehta','Cardiology'),
+(102,'Dr.Khan','Neurology'),
+(103,'Dr.Rao','Orthopedics'),
+(104,'Dr.Iyer','Dermatology');
+select * from doctors;
+
+CREATE DATABASE appointments;
+USE appointments;
+
+CREATE TABLE appointments(
+appointment_id INT PRIMARY KEY,
+patient_id INT,
+doctor_id INT,
+appointment_date DATE,
+treatment_cost DECIMAL(10,2));
+
+INSERT INTO appointments
+(appointment_id,patient_id,doctor_id,appointment_date,treatment_cost)VALUES
+(1001,1,101,'2025-01-10',5000),
+(1002,2,102,'2025-01-15',7000),
+(1003,3,101,'2025-02-05',4000),
+(1004,1,103,'2025-02-20',6000),
+(1005,4,104,'2025-03-01',3500),
+(1006,5,101,'2025-03-10',8000),
+(1007,6,102,'2025-03-15',6500),
+(1008,2,103,'2025-04-05',7200);
+select * from appointments;
+
+
+QUES 1.Find Top 3 Highest Revenue Doctors.
+SELECT d.doctor_id,d.doctor_name,sum(a.treatment_cost) as total_Revenue
+FROM doctors as d LEFT JOIN appointments as a ON d.doctor_id=a.doctor_id
+group by d.doctor_id,d.doctor_name
+order by total_Revenue Desc
+limit 3;
+
+
+QUES 2.Find Doctor Who Generated Maximum Revenue.
+SELECT d.doctor_id,d.doctor_name,sum(a.treatment_cost) as total_Revenue
+FROM doctors as d LEFT JOIN appointments as a ON d.doctor_id=a.doctor_id
+group by d.doctor_iddoctors,d.doctor_name
+order by total_Revenue Desc
+limit 1;
+
+
+QUES 3.Find Patients Who Visited More Than 1 Doctor.
+select p.patient_id,p.patient_name,count(distinct a.doctor_id)as doctor_visited
+from patients as p join appointments as a ON p.patient_id=a.patient_id
+group by p.patient_id,p.patient_name
+having count(distinct a.doctor_id)>1;
+
+
+QUES 4.Monthly Revenue Trend (Year+ Month).
+SELECT YEAR(appointment_date) as year,
+month(appointment_date) as month,
+sum(treatment_cost) as total_Revenue
+from appointments
+group by YEAR(appointment_date),month(appointment_date);
+
+
+QUES 5.Find Patients Who Never Took Appointment.
+select p.patient_id,p.patient_name
+from patients as p LEFT join appointments as a ON p.patient_id=a.patient_id
+where a.appointment_date IS NULL;
+
+
+QUES 6.Find Second Highest Treatment Cost.
+SELECT treatment_cost FROM appointments
+ORDER BY treatment_cost DESC
+LIMIT 1 OFFSET 1;
+
+
+QUES 7.Running Total of Revenue (Window Function).
+SELECT appointment_date,treatment_cost,
+SUM(treatment_cost) OVER(ORDER BY appointment_date) AS RUNNING_TOTAL
+FROM appointments;
+
+
+QUES 8.Rank Doctors Based on Revenue.
+SELECT d.doctor_id,d.doctor_name,SUM(a.treatment_cost) as total_revenue,
+DENSE_RANK() OVER(ORDER BY SUM(a.treatment_cost)DESC) as rank_Position
+FROM doctors as d Left join appointments as a ON d.doctor_id=a.doctor_id
+GROUP BY d.doctor_id,d.doctor_name;
+
+
+QUES 9.Find Repeat Patients (Visited More Than 2 Times).
+SELECT p.patient_id,p.patient_name,count(a.appointment_id) as total_visits
+from patients as p LEFT join appointments as a ON p.patient_id=a.patient_id 
+Group by p.patient_id,p.patient_name
+Having count(a.appointment_id)>2;
+
+
+QUES 10.Find Days Between First and Last Visit of Each Patient.
+Select patient_id,
+min(appointment_date) as First_visit,
+max(appointment_date) as last_visit,
+DATEDIFF(max(appointment_date), min(appointment_date)) as days_difference
+FROM appointments
+GROUP BY patient_id;
+
+
+QUES 11.Find Most Common Month for Appointments.
+SELECT MONTH(appointment_date)as month,
+count(*) from appointments
+group by MONTH(appointment_date);
+
+
+QUES 12.Create a View for Monthly Revenue.
+create view monthly_revenue_view as 
+select
+year(appointment_date) as Year,
+month(appointment_date) as month,
+Sum(treatment_cost) as monthly_revenue
+from appointments
+group by year(appointment_date),month(appointment_date)
+select * from monthly_revenue_view;
+
+
+QUES 13.Create Stored Procedure to Get Revenue By Doctor ID.
+
+DELIMITER //
+CREATE Procedure get_revenue_by_doctor(In doc_id INT)
+begin
+select doctor_id,sum(treatment_cost)
+from appointments
+where doctor_id=doc_id
+GROUP by doctor_id;
+END //
+
+DELIMITER ;
+call  get_revenue_by_doctor(101);
+
+
+QUES 14.Create Trigger to Prevent Negative Treatment Cost.
+
+DELIMITER //
+CREATE TRIGGER Prevent_Negative_Cost
+before insert on appointments
+FOR EACH ROW
+BEGIN
+IF NEW.treatment_cost < 0 THEN
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'Treatment cost cannot be negative';
+END IF;
+END //
+DELIMITER ;
