@@ -6,7 +6,7 @@ This project demonstrates SQL skills using a healthcare dataset. It includes tab
 
 ## Tools Used
 - MySQL
-- 
+  
 ## Project Structure
 Healthcare-SQL-Project
 │
